@@ -1,0 +1,10 @@
+{
+    "files.exclude": {
+        "_*": true,
+        ".*": true,
+        "*.d": true,
+        "*.img": true,
+        "*.o": true,
+        "*.sym": true
+    }
+}

@@ -1,0 +1,5 @@
+-   Peek References: ctrl + alt + K
+-   Show all references: ctrl + alt + L
+-   Peek definition: ctrl + alt + I
+-   Go to definition: ctrl + alt + O
+-   Comeback from definiton: ctrl + alt + -
