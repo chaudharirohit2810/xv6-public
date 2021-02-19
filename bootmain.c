@@ -121,8 +121,8 @@ readseg(uchar* pa, uint count, uint offset)
   // Round down to sector boundary.
   /*
   ? Why we minus offset?
-  * Because readsect below these instruction reads the whole segment and we want to store particular value at pa therefore we will 
-  * minus the value offset % SECTSIZE so address gets loaded correctly 
+  * Because readsect below these instruction reads the whole sectore and we want to store data at pa therefore we will 
+  * minus the value offset % SECTSIZE so data gets loaded at correct address 
   */
   pa -= offset % SECTSIZE;
 
@@ -134,5 +134,5 @@ readseg(uchar* pa, uint count, uint offset)
   // we load in increasing order.
   // * Read each sector from disk 
   for(; pa < epa; pa += SECTSIZE, offset++)
-    readsect(pa, offset); // Address and sectorn number are passed
+    readsect(pa, offset); // Address and sector number are passed
 }
