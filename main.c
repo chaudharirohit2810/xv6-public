@@ -17,6 +17,15 @@ extern char end[]; // first address after kernel loaded from ELF file
 int
 main(void)
 {
+  /*
+  * end is end of the kernel code (Simple!!!!)
+  * end is 0x801154a8 (that is 2049MB)
+  TODO: Check this using objdump
+  
+  ? what is P2V
+  * It simply converts physical address to virtual address by adding KERNBASE to it
+  * So 4MB physical will be converted to 4MB virtual address
+  */
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
   mpinit();        // detect other processors
@@ -99,9 +108,23 @@ startothers(void)
 // hence the __aligned__ attribute.
 // PTE_PS in a page directory entry enables 4Mbyte pages.
 
+/*
+* entrypgdir is array of page table entries
+*/
 __attribute__((__aligned__(PGSIZE)))
 pde_t entrypgdir[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
+  /*
+  * In the below code only 0th entry and 512th entry (as KERNBASE is 0x80000000 and PDXSHIFT is 22 then by right shifting it will be 512)
+  * are setup
+  * Both the entries point to 0th frame in page table
+  * Later we setup P, W and PS which mean present, writable and page size respectively (7th bit in PTE is used to indicate Page size)
+   
+  ? Why to choose 512?
+  * If we convert 512 to offset then it will be (512 * 4 * 1024 * 1024 which is 0x80000000 in hexadecimal)
+  * Surprise!Suprise! This is same address which is KERNBASE, this is virtual address at which kernel should be loaded
+  * Physically it is first frame means 0 to 4MB in actual physical memory
+  */
   [0] = (0) | PTE_P | PTE_W | PTE_PS,
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
   [KERNBASE>>PDXSHIFT] = (0) | PTE_P | PTE_W | PTE_PS,
