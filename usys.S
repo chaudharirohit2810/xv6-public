@@ -1,16 +1,11 @@
 #include "syscall.h"
 #include "traps.h"
 
-// MY NOTES
-// It defines different system call
-// movl SYS_##name, %eax: It moves particular number to %eax to execute particular systemcall (Found in syscall.h)
-// int takes T_SYSCALL (=64) as arguement which is used for system call 
-
 #define SYSCALL(name) \
   .globl name; \
   name: \
     movl $SYS_ ## name, %eax; \
-    int $T_SYSCALL; \ 
+    int $T_SYSCALL; \
     ret
 
 SYSCALL(fork)

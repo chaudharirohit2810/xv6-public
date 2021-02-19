@@ -1,10 +1,5 @@
 // x86 trap and interrupt constants.
 
-/*
-* MY NOTES
-* Different interrupts present in particular processor
-*/
-
 // Processor-defined:
 #define T_DIVIDE         0      // divide error
 #define T_DEBUG          1      // debug exception

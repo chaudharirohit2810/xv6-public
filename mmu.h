@@ -179,5 +179,3 @@ struct gatedesc {
 }
 
 #endif
-
-// * off_15_0: Tells where the trap handling code is
