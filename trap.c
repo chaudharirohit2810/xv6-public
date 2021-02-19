@@ -14,10 +14,25 @@ extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
 
+/*
+* MY NOTES
+* To intialize the IDT table to handle interrupts
+*/
+
 void
 tvinit(void)
 {
   int i;
+
+  /* 
+    * SETGATE is used to set the idt array to point to the proper code to execute when various interrupts occur
+    * Arguements to it
+    * First is the idt array index
+    * istrap: 0 if exception has occured and 0 if syscall or interrupt has occured
+    * SEG_KCODE is code segment selector for interrupts
+    * vectors[i] are the different offset in interrupt code segment (present in vectors.S)
+    * Last is descriptor priviledge level 0 (as kernel can only execute it) and DPL_USER (is 3) as user can execute system call
+  */
 
   for(i = 0; i < 256; i++)
     SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
@@ -26,6 +41,10 @@ tvinit(void)
   initlock(&tickslock, "time");
 }
 
+/*
+* Makes IDTR pointer point to IDT Table
+* This is done for every processor
+*/
 void
 idtinit(void)
 {
@@ -33,19 +52,23 @@ idtinit(void)
 }
 
 //PAGEBREAK: 41
+/* 
+* This function is used to handle all the interrupts
+*/
 void
 trap(struct trapframe *tf)
 {
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
       exit();
-    myproc()->tf = tf;
+    myproc()->tf = tf;    // * To store current trapframe in process
     syscall();
     if(myproc()->killed)
       exit();
     return;
   }
 
+   // * To handle Controller interrupts from keyboards, timers
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
