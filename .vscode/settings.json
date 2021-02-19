@@ -2,9 +2,15 @@
     "files.exclude": {
         "_*": true,
         ".*": true,
+        "*.asm": true,
         "*.d": true,
         "*.img": true,
-        "*.o": true,
+        "*.o*": true,
         "*.sym": true
+    },
+    "workbench.editor.enablePreview": false,
+    "editor.formatOnSave": false,
+    "files.associations": {
+        "random": "cpp"
     }
 }
