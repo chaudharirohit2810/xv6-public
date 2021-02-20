@@ -77,7 +77,7 @@ static inline void
 lidt(struct gatedesc *p, int size)
 {
   volatile ushort pd[3];
-  // * Kas karat kai mahit pan idt load hoto ithe
+  // * Some assembly instructions run to set idtr pointer
 
   pd[0] = size-1;
   pd[1] = (uint)p;

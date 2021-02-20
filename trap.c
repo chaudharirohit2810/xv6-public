@@ -15,7 +15,6 @@ struct spinlock tickslock;
 uint ticks;
 
 /*
-* MY NOTES
 * To intialize the IDT table to handle interrupts
 */
 
@@ -28,8 +27,8 @@ tvinit(void)
     * SETGATE is used to set the idt array to point to the proper code to execute when various interrupts occur
     * Arguements to it
     * First is the idt array index
-    * istrap: 0 if exception has occured and 0 if syscall or interrupt has occured
-    * SEG_KCODE is code segment selector for interrupts
+    * istrap: 1 means don't disable interrupt and 0 means disable interrupts
+    * SEG_KCODE is code segment selector for interrupts 
     * vectors[i] are the different offset in interrupt code segment (present in vectors.S)
     * Last is descriptor priviledge level 0 (as kernel can only execute it) and DPL_USER (is 3) as user can execute system call
   */
@@ -42,7 +41,7 @@ tvinit(void)
 }
 
 /*
-* Makes IDTR pointer point to IDT Table
+* Makes IDTR pointer (which is in hardware) point to IDT Table
 * This is done for every processor
 */
 void
@@ -54,15 +53,18 @@ idtinit(void)
 //PAGEBREAK: 41
 /* 
 * This function is used to handle all the interrupts
+* The arguement is pushed on to the stack in trapasm.S and vectors.S combined
 */
 void
 trap(struct trapframe *tf)
 {
+  // * If the trap is system call
   if(tf->trapno == T_SYSCALL){
+    // * If the process is killed no need to execute syscall
     if(myproc()->killed)
       exit();
     myproc()->tf = tf;    // * To store current trapframe in process
-    syscall();
+    syscall(); // * Execute the syscall
     if(myproc()->killed)
       exit();
     return;
