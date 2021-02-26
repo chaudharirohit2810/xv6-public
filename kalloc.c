@@ -44,6 +44,10 @@ kinit1(void *vstart, void *vend)
   freerange(vstart, vend);
 }
 
+/*
+* Pretty similar to kinit1
+* It will just free from 4MB to 224MB and add them to list of free frames
+*/
 void
 kinit2(void *vstart, void *vend)
 {

@@ -8,6 +8,11 @@
 #include "elf.h"
 
 extern char data[];  // defined by kernel.ld
+
+/*
+*	-----Rohit-------
+*	pde_t is just an unsigned int
+*/
 pde_t *kpgdir;  // for use in scheduler()
 
 // Set up CPU's kernel segment descriptors.
@@ -21,11 +26,24 @@ seginit(void)
   // Cannot share a CODE descriptor for both kernel and user
   // because it would have to have DPL_USR, but the CPU forbids
   // an interrupt from CPL=0 to DPL=3.
+	
+ /*
+	* All the mappings are from 0(Base) to 4GB(Limit) logical which indicated linear address = logical address
+	* Remember: Physical address != Logical address
+	* Segmentation does not do anything magical with addresses it is just for error checking
+	* The only difference is last parameter Which will priviledge level for user & kernel
+	* This is done as we are going to enter into user world from kernel world now (so obv user will need some memory)
+ */
+	
   c = &cpus[cpuid()];
   c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
   c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
+	
+	/*
+	* load actual gdt with segments of this
+	*/
   lgdt(c->gdt, sizeof(c->gdt));
 }
 
@@ -37,11 +55,21 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
-
+	
+	/*
+	* ----Rohit--------
+	* Here the PDX(va) is converting virtual address as an index in page directory
+	* Check diagram at defination of PDX
+	*/
   pde = &pgdir[PDX(va)];
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   } else {
+		/*
+		* --------Rohit------
+		* If alloc is not set(0) then return
+		* If alloc is set(1) then allocate a page table then using memset is zeroing the page
+		*/
     if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
       return 0;
     // Make sure all those PTE_P bits are zero.
@@ -49,8 +77,16 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
     // The permissions here are overly generous, but they can
     // be further restricted by the permissions in the page table
     // entries, if necessary.
+		
+		/*
+		* setting up that particular entry in page table (Remember this is PTE i.e. low level entry) with virtual address and permissions
+		*/
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
+	/*
+	*	Return address of pte (Just like we do to initialize pointers)
+	* This is where pde entry will point
+	*/
   return &pgtab[PTX(va)];
 }
 
@@ -62,14 +98,31 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
   pte_t *pte;
-
+	
+	/*
+	* -----Rohit-------
+	* a = start of mapping
+	* last = end of mapping
+	*/
   a = (char*)PGROUNDDOWN((uint)va);
   last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
   for(;;){
+		/*
+		* ------Rohit--------
+		* walkpgdir will return pte entry	
+		* Then, It will check if pte is already present then panic
+		* TODO Understand what is walkpgdir does line by line
+		* Remember: pgdir is page table mapping only for kernel
+		*/
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
       panic("remap");
+		/*
+		* -------Rohit-------
+		* this will store pte entry
+		* first is physical address, second is permissions and then if the page is present or not
+		*/
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
@@ -102,6 +155,26 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 
 // This table defines the kernel's mappings, which are present in
 // every process's page table.
+
+/*
+* --------Rohit---------
+* These are various segments in physical memory 
+*
+* First one is used for I/O it is from **0-1MB** in actual physical memory
+*
+* Second is Kernel code and read only data, it is from **1MB-1.03125** in actual physical memory
+*
+* Third is for Kernel data and memory,
+* This will be used to store all the kernel data structures and for pages of processes, it is from 1.03125MB-224MB(PHYSTOP)
+* PHYSTOP: xv6 uses only upto PHYSTOP not beyond PHYSTOP
+? Can we extend PHYSTOP? and what is effect of extending PHYSTOP value?
+*
+*
+* The fourth one is unused memory (identified by DEVSPACE) it is from 224MB-3.96GB
+*
+? what does kmap do?
+* They create a page directory which maps kernel code and kernel data from virtual address to physical address
+*/
 static struct kmap {
   void *virt;
   uint phys_start;
@@ -120,12 +193,24 @@ setupkvm(void)
 {
   pde_t *pgdir;
   struct kmap *k;
-
+	/*
+	* ----------Rohit---------
+	* first call is kalloc which will allocate a page for pgdir
+	* then memset will fill in the page with 0 (junk value) (!!Remember page size(PGSIZE) is 4kb here)
+	*/
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
   memset(pgdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
+	/*
+	* -------Rohit-----------
+	? what is kvm (One of the most important parts to understand memory management)
+	* A global array of structure kvm (which contains virtual address, physical start address, physical end address and permissions) Check line number 120
+	*
+	* The below code will map virtual address space of entries in kvm to physical address space by setting up a two level page table
+	* It will also fill in the allocated page with PDE (top level page table entry)
+	*/
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
                 (uint)k->phys_start, k->perm) < 0) {
@@ -140,6 +225,11 @@ setupkvm(void)
 void
 kvmalloc(void)
 {
+	/*
+	*	-------Rohit--------
+	*	This will return the page directory pointer
+	* setupkvm will setup the **two level** page table for xv6
+	*/
   kpgdir = setupkvm();
   switchkvm();
 }
@@ -149,6 +239,11 @@ kvmalloc(void)
 void
 switchkvm(void)
 {
+ 	/*
+	*	------Rohit-------
+	* This will load page table(directory) address in cr3 register 
+	* cr3 register always points to base of page table directory
+	*/
   lcr3(V2P(kpgdir));   // switch to the kernel page table
 }
 

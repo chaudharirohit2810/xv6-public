@@ -26,11 +26,13 @@ main(void)
   * It simply converts physical address to virtual address by adding KERNBASE to it
   * So 4MB physical will be converted to 4MB virtual address
   */
+
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
   mpinit();        // detect other processors
   lapicinit();     // interrupt controller
   seginit();       // segment descriptors
+  // * After this the segmentation part is not going to change
   picinit();       // disable pic
   ioapicinit();    // another interrupt controller
   consoleinit();   // console hardware
