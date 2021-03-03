@@ -24,6 +24,15 @@ extern int ncpu;
 // The layout of the context matches the layout of the stack in swtch.S
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
+
+/*
+ * Read above comments carefully
+ *
+ * Line no 2 and 3 from above code tell us that segment registers are constant. This is because we have loaded them in gdt so each process has same segment 
+ * registers. So there is no need to store them
+ *
+ * The context is always saved on the stack
+ */
 struct context {
   uint edi;
   uint esi;

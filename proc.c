@@ -323,6 +323,11 @@ void
 scheduler(void)
 {
   struct proc *p;
+
+  /*
+   * ------------Rohit----------------
+   * The c will point to the structure of cpu on which current process is running
+   */
   struct cpu *c = mycpu();
   c->proc = 0;
   
@@ -332,6 +337,13 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+	/*
+	 * -------------Rohit---------------
+	 * ptable is the list of all the struct procs
+	 *
+	 * First it is checking if the process is runnable or not (Process should be runnable to schedule!)
+	 */
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
@@ -339,11 +351,31 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+
+	  /*
+	   * -----------Rohit-----------
+	   * proc points to currently running proccess on this cpu
+	   */
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
+			
+	  /*
+	   * ------------Rohit----------
+	   *  c->scheduler: Context of scheduler code itself
+	   *  
+	   *  This is a function call so p->context, address of c->scheduler and return address X will be pushed on to the stack resp.
+	   */
       swtch(&(c->scheduler), p->context);
+	  // * X: return address
+	  // * Rohit: After this you will jump into the new process
+	 
+	  /*
+	   * -------Rohit-----------
+	   *  As we jumped to new process we will never come back here,
+	   *  So why there is a need of this?
+	   *
+	   */
       switchkvm();
 
       // Process is done running for now.
@@ -376,7 +408,18 @@ sched(void)
     panic("sched running");
   if(readeflags()&FL_IF)
     panic("sched interruptible");
+
+	// * Rohit: This stands for interrupt enable
   intena = mycpu()->intena;
+
+	/*
+	 * ------------Rohit-----------
+	 *  Same function called in scheduler() from swtch.S
+	 *  The arguements are different 
+	 *  First is address of p->context which is the current running process which received timer interrupt (old)
+	 *  Second is the context of scheduler (obv! used to schedule new process)
+	 *  After this instruction the code will jump to scheduler function code
+	 */
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
 }
@@ -386,6 +429,8 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
+
+	// * Rohit: myproc gives you current cpu process (done by getting cpu and then proc variable in cpu structure)
   myproc()->state = RUNNABLE;
   sched();
   release(&ptable.lock);
