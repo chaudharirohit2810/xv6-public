@@ -98,7 +98,36 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
   pte_t *pte;
+
+
+	/*
+	 * -----------Rohit------------
+	 *  Summary of mappages:
+	 *
+	 *  It allocates page table entries for virtual address va to map to physical address pa
+	 *  First it rounds downs pages on line 115 & 116
+	 *  
+	 *
+	 *  Then walkpgdir is called 
+	 *  In walkpgdir particular index from pgdir (which is allocated already) is accessed.
+	 *  This index is obtained by right shifting the virtual address(va) by 22 and then anding it with 0x3FF
+	 *  Then kalloc is called to allocate new page table for inner level entries
+	 *  After that physical address of inner page table is stored in outer page table (!! Note that: *pde points to particular index in outer page table)
+	 *  Then different flags regarding it are set
+	 *  And at the end walkpgdir returns the address of particular index in inner level page table 
+	 *  (Done by right shifting virtual address by 12 and then anding it with 0x3FF)  
+	 *  This is done to follow 10BIT PDE ENTRY | 10BIT PTE ENTRY | 12 BIT OFFSET pattern
+	 *	
+	 *	
+	 *	The returned address is stored in pte variable 
+	 *  Then actual physical address is written at this particular index in low level page entry at line number 147 along with permissions
+	 *  (dereferencing stores value at that particular address)
+	 *  This is done page by page until we get to the end of mapping
+	 *
+	 */
 	
+
+
 	/*
 	* -----Rohit-------
 	* a = start of mapping
@@ -162,6 +191,7 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 *
 * First one is used for I/O it is from **0-1MB** in actual physical memory
 *
+* data is defined in kernel.ld
 * Second is Kernel code and read only data, it is from **1MB-1.03125** in actual physical memory
 *
 * Third is for Kernel data and memory,
@@ -231,6 +261,11 @@ kvmalloc(void)
 	* setupkvm will setup the **two level** page table for xv6
 	*/
   kpgdir = setupkvm();
+
+	/* 
+	 * -------Rohit---------
+	 * The address of outer page table returned by setupkvm is stored in cr3 register using this function
+	 */
   switchkvm();
 }
 
